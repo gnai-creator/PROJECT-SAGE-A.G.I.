@@ -1,3 +1,7 @@
+# SAGE-14: AGI
+# Codinome: AGI
+# Author: Felipe Maya Muniz
+
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, LayerNormalization, MultiHeadAttention, GRUCell, Conv2D, Flatten, Input, Softmax
 
