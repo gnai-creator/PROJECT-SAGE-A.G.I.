@@ -64,6 +64,19 @@ class EthicalConflict(tf.keras.layers.Layer):
         return score + self.accumulated_pain * 0.01
 
 class ReflectiveMoralAgent(tf.keras.layers.Layer):
+    """
+    A recurrent ethical processing unit that integrates memory.
+
+    This component maintains an internal hidden state (via a GRU cell) across evaluations to simulate
+    ethical consistency and reflection. It processes symbolic representations, compresses them,
+    and updates its state based on new observations—thereby enabling dynamic, memory-informed
+    reasoning over time.
+
+    Attributes:
+        cell: A GRU cell to handle sequential state updates.
+        state: A persistent memory state vector updated on each call.
+        reflect: A transformation layer to prepare inputs for recurrent reasoning.
+    """
     def __init__(self, dim):
         super().__init__()
         self.cell = GRUCell(dim)
@@ -77,6 +90,17 @@ class ReflectiveMoralAgent(tf.keras.layers.Layer):
         return out
 
 class ARCMetaHypothesis(tf.keras.layers.Layer):
+    """
+    A simple ensemble layer modeling abstract reasoning patterns.
+
+    This layer proposes and scores multiple transformations over the input. Intended to simulate
+    hypothesis generation over symbolic states (e.g., from ARC tasks), it blends three dense transformations
+    with a softmax-based attention mechanism to select the most promising one.
+
+    Attributes:
+        hypotheses: A list of dense transformations acting as candidate reasoning patterns.
+        selector: A softmax layer selecting the most aligned hypothesis.
+    """
     def __init__(self, dim):
         super().__init__()
         self.hypotheses = [Dense(dim) for _ in range(3)]
@@ -89,6 +113,17 @@ class ARCMetaHypothesis(tf.keras.layers.Layer):
         return tf.reduce_sum(stacked * tf.expand_dims(scores, -1), axis=1)
 
 class VisualPatternAdapter(tf.keras.layers.Layer):
+    """
+    Encodes 2D visual patterns into dense vectors.
+
+    This adapter is meant to support pixel-based tasks such as those in the ARC dataset. It uses a
+    small CNN to convert visual inputs into flat symbolic representations.
+
+    Attributes:
+        conv: A convolutional feature extractor.
+        flatten: A flattener to prepare for dense transformation.
+        adapter: A final dense encoder.
+    """
     def __init__(self, hidden_dim):
         super().__init__()
         self.conv = Conv2D(hidden_dim, (3, 3), activation='relu', padding='same')
@@ -101,6 +136,14 @@ class VisualPatternAdapter(tf.keras.layers.Layer):
         return self.adapter(flat)
 
 class Sage14AGI(tf.keras.Model):
+    """
+    The main model architecture simulating symbolic-ethical reasoning for ARC-style tasks.
+
+    It includes encoding, ethical alignment, hypothesis testing, and decision decoding, structured
+    to process both symbolic vectors and image inputs with reflection and ethical self-monitoring.
+
+    Author: Felipe Maya Muniz
+    """
     def __init__(self, input_dim, hidden_dim, output_dim):
         super().__init__()
         self.encoder = Dense(hidden_dim, activation='relu')
@@ -123,5 +166,5 @@ class Sage14AGI(tf.keras.Model):
         aligned, gate, pain_signal = self.value_system(agent_out)  # Ethical alignment process
         hypothesis = self.hypothesis(agent_out)  # ARC hypothesis formulation
         conflict_score = self.ethical_conflict(agent_out, self.value_system.value_vector, hypothesis)  # Ethical divergence tracking
-        output = self.decoder(aligned)  # Final decision
+        output = self.decoder(aligned)  # Final decision transformation from aligned ethical vector to output
         return output, conflict_score, gate, self.value_system.value_vector, pain_signal
