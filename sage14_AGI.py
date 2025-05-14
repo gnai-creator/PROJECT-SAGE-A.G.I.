@@ -6,6 +6,25 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, LayerNormalization, MultiHeadAttention, GRUCell, Conv2D, Flatten, Input, Softmax
 
 class ValueSystem(tf.keras.layers.Layer):
+    """
+    Represents an internal value alignment mechanism for the agent.
+
+    The ValueSystem compares current neural activations with a mutable, non-trainable 'value vector' 
+    that symbolizes ethical or goal-aligned behavior. This vector is initialized randomly to simulate 
+    an innate or subjective baseline, which is iteratively updated based on projected values derived 
+    from the agent's current state. This design reflects the idea of ethical fluidity rather than 
+    rigid, data-driven optimization.
+
+    Attributes:
+        value_vector: A mutable vector representing internalized ethical ideals or goals, updated 
+                      per forward pass but not learned through backpropagation.
+        internal_ethics: A projection layer that interprets and proposes value adjustments based on 
+                         the agent's current state.
+        alignment_gate: Determines how much influence the internal value vector has compared to the 
+                        current state representation.
+        sensitivity: A trainable parameter that modulates the magnitude of synthetic 'pain' resulting 
+                     from deviation between agent behavior and internal values.
+    """
     def __init__(self, dim):
         super().__init__()
         self.value_vector = tf.Variable(tf.random.normal([1, dim]), trainable=False)
@@ -23,6 +42,17 @@ class ValueSystem(tf.keras.layers.Layer):
         return ethical_aligned, gate, pain_signal
 
 class EthicalConflict(tf.keras.layers.Layer):
+    """
+    Computes and accumulates an ethical conflict score over time.
+
+    This layer assesses divergence between the agent's behavior (action), its internalized value system,
+    and the hypothesized output. It simulates an ethical self-monitoring mechanism by incrementally 
+    building up a conflict score, representing ongoing misalignment or discomfort.
+
+    Attributes:
+        accumulated_pain: A non-trainable running total of conflict values to capture longitudinal
+                          deviations, influencing the total conflict score.
+    """
     def __init__(self):
         super().__init__()
         self.accumulated_pain = tf.Variable(0.0, trainable=False)
@@ -74,7 +104,8 @@ class Sage14AGI(tf.keras.Model):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super().__init__()
         self.encoder = Dense(hidden_dim, activation='relu')
-        self.attn = MultiHeadAttention(num_heads=8, key_dim=8)
+        assert hidden_dim % 8 == 0, "hidden_dim must be divisible by 8 to match num_heads * key_dim"
+        self.attn = MultiHeadAttention(num_heads=8, key_dim=hidden_dim // 8)
         self.norm = LayerNormalization()
         self.agent = ReflectiveMoralAgent(hidden_dim)
         self.value_system = ValueSystem(hidden_dim)
@@ -84,13 +115,13 @@ class Sage14AGI(tf.keras.Model):
 
     def call(self, x):
         tf.debugging.assert_rank(x, 2)
-        x = self.encoder(x)
-        x = tf.expand_dims(x, 1)
-        x = self.attn(x, x, x)
-        x = self.norm(x)
-        agent_out = self.agent(x)
-        aligned, gate, pain_signal = self.value_system(agent_out)
-        hypothesis = self.hypothesis(agent_out)
-        conflict_score = self.ethical_conflict(agent_out, self.value_system.value_vector, hypothesis)
-        output = self.decoder(aligned)
+        x = self.encoder(x)  # Symbolic state encoding
+        x = tf.expand_dims(x, 1)  # Prepare for attention layer
+        x = self.attn(x, x, x)  # Contextual attention
+        x = self.norm(x)  # Normalize post-attention
+        agent_out = self.agent(x)  # Recurrent ethical reflection
+        aligned, gate, pain_signal = self.value_system(agent_out)  # Ethical alignment process
+        hypothesis = self.hypothesis(agent_out)  # ARC hypothesis formulation
+        conflict_score = self.ethical_conflict(agent_out, self.value_system.value_vector, hypothesis)  # Ethical divergence tracking
+        output = self.decoder(aligned)  # Final decision
         return output, conflict_score, gate, self.value_system.value_vector, pain_signal
