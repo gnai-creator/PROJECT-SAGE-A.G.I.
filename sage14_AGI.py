@@ -167,4 +167,6 @@ class Sage14AGI(tf.keras.Model):
         hypothesis = self.hypothesis(agent_out)  # ARC hypothesis formulation
         conflict_score = self.ethical_conflict(agent_out, self.value_system.value_vector, hypothesis)  # Ethical divergence tracking
         output = self.decoder(aligned)  # Final decision transformation from aligned ethical vector to output
+        if training:
+            return output
         return output, conflict_score, gate, self.value_system.value_vector, pain_signal
