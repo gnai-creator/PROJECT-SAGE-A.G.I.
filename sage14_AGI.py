@@ -104,7 +104,7 @@ class ARCMetaHypothesis(tf.keras.layers.Layer):
     def __init__(self, dim):
         super().__init__()
         self.hypotheses = [Dense(dim) for _ in range(3)]
-        self.selector = Dense(1, activation='softmax')
+        self.selector = Dense(3, activation='softmax')
 
     def call(self, x):
         candidates = [h(x) for h in self.hypotheses]
