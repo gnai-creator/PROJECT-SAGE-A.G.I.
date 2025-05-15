@@ -156,7 +156,7 @@ class Sage14AGI(tf.keras.Model):
         self.hypothesis = ARCMetaHypothesis(hidden_dim)
         self.decoder = Dense(output_dim)
 
-    def call(self, x):
+    def call(self, x, training=False):
         tf.debugging.assert_rank(x, 2)
         x = self.encoder(x)  # Symbolic state encoding
         x = tf.expand_dims(x, 1)  # Prepare for attention layer
